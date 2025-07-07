@@ -1,0 +1,11 @@
+*.o
+*.so
+*.dynlib
+
+.vscode/*
+
+bin/*
+example
+tests/tests
+libretry.dylib
+libretry.so

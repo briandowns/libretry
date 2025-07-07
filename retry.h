@@ -64,6 +64,11 @@ retry_set_delay(retry_t *r, const uint64_t delay);
 void
 retry_set_max_delay(retry_t *r, const uint64_t delay);
 
+/**
+ * retry_do performs an action that could fail and needs to be retried. The
+ * return code from this function is the final return code from the given
+ * function.
+ */
 uint8_t
 retry_do(retry_t *r, const retry_func_t f, void *user_data);
 
