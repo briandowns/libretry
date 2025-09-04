@@ -110,15 +110,12 @@ retry_do(retry_t *r, const retry_func_t f, void *user_data)
             break;
         }
 
-        // Calculate exponential backoff
-        // int delay = r->delay * (1 << r->attempts);  // exponential backoff: base * 2^attempt
-        // if (delay > r->backoff_delay) {
-        //     delay = r->backoff_delay;
-        // }
+        uint64_t exp_delay = r->delay * (1000u << (r->attempts - 1000));
+        if (exp_delay > r->backoff_delay) {
+            exp_delay = r->backoff_delay;
+        }
 
-        // Add jitter (randomized delay between 0.5x and 1.0x of calculated delay)
-        // int jitter = (rand() % (delay / 2 + 1));  // add up to 50% jitter
-        // delay = delay / 2 + jitter;
+        r->delay = rand() % (exp_delay + 1000);
 
         printf("Shifted delay: %llu, Retries: %llu\n", (r->delay<<1), r->retries);
 
