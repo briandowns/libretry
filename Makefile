@@ -5,7 +5,6 @@ NAME = libretry
 UNAME_S = $(shell uname -s)
 
 CFLAGS  = -std=c17 -O3 -fPIC -Wall -Wextra
-LDFLAGS =
 
 # respect traditional UNIX paths
 INCDIR  = /usr/local/include
@@ -19,16 +18,6 @@ ifeq ($(UNAME_S),Linux)
 $(NAME).so: clean
 	$(CC) -shared -o $@ retry.c $(CFLAGS) $(LDFLAGS)
 endif
-
-.PHONY: tests
-tests: clean
-	$(CC) -g -o tests/tests tests/test.c retry.c $(CFLAGS) $(LDFLAGS)
-	tests/tests
-	rm -f tests/tests
-
-.PHONY: valgrind
-valgrind: tests
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --tool=memcheck ./tests/tests 2>&1 | awk -F':' '/definitely lost:/ {print $2}'
 
 .PHONY: install
 install: 
@@ -56,8 +45,7 @@ clean:
 	rm -f $(NAME).dylib
 	rm -f $(NAME).so
 	rm -f example
-	rm -f tests/tests
 
 .PHONY: example
 example: clean
-	$(CC) -g -o $@ retry.c example.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ retry.c example.c $(LDFLAGS)

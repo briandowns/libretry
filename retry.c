@@ -25,8 +25,8 @@
  * SUCH DAMAGE.
  */
 
-#define _DEFAULT_SOURCE
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
@@ -34,19 +34,19 @@
 #include "retry.h"
 
 #define DEFAULT_RETRIES 5
-#define BASE_DELAY_MS 100
-#define MAX_DELAY_MS 5000
+#define BASE_DELAY_MS 100  // base delay in milliseconds
+#define MAX_DELAY_MS 5000  // max backoff delay in milliseconds
+
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 struct retry {
     uint64_t attempts;
     uint64_t retries;
     uint64_t delay;
-    uint64_t max_delay;
+    uint64_t backoff_delay;
+    uint64_t max_jitter;
 };
 
-/**
- * init_srand seeds the random number generator but will only do it once.
- */
 static void
 init_srand()
 {
@@ -58,6 +58,13 @@ init_srand()
     }
 }
 
+static void
+sleep_ms(int milliseconds)
+{
+    // usleep takes microseconds
+    usleep(milliseconds * 1000);
+}
+
 retry_t*
 retry_new()
 {
@@ -66,7 +73,7 @@ retry_new()
     retry_t *r = (retry_t*)calloc(1, sizeof(retry_t));
     r->retries = DEFAULT_RETRIES;
     r->delay = BASE_DELAY_MS;
-    r->max_delay = MAX_DELAY_MS;
+    r->backoff_delay = MAX_DELAY_MS;
 
     return r;
 }
@@ -80,13 +87,13 @@ retry_set_retries(retry_t *r, const uint64_t retries)
 void
 retry_set_delay(retry_t *r, const uint64_t delay)
 {
-    r->delay = delay;
+    r->delay = delay * 1000;
 }
 
 void
 retry_set_max_delay(retry_t *r, const uint64_t delay)
 {
-    r->max_delay = delay * 1000;
+    r->backoff_delay = delay * 1000;
 }
 
 uint8_t
@@ -95,22 +102,40 @@ retry_do(retry_t *r, const retry_func_t f, void *user_data)
     uint8_t ret = 0;
 
     while (r->attempts < r->retries) {
-        if ((ret = f()) == 0) {
+        printf("Attempt #%llu...\n", r->attempts + 1);
+
+        ret = f();
+        if (ret == 0) {
+            printf("Operation succeeded!\n");
             break;
         }
+
+        // Calculate exponential backoff
+        // int delay = r->delay * (1 << r->attempts);  // exponential backoff: base * 2^attempt
+        // if (delay > r->backoff_delay) {
+        //     delay = r->backoff_delay;
+        // }
+
+        // Add jitter (randomized delay between 0.5x and 1.0x of calculated delay)
+        // int jitter = (rand() % (delay / 2 + 1));  // add up to 50% jitter
+        // delay = delay / 2 + jitter;
+
+        printf("Shifted delay: %llu, Retries: %llu\n", (r->delay<<1), r->retries);
 
         r->delay = r->delay << 1;
-        if (r->delay > r->max_delay) {
-            break;
-        }
+        printf("delay: %llu\n", r->delay);
 
-        // converts to nanoseconds
-        usleep(r->delay * 1000);
+        printf("Operation failed. Retrying in %llu ms...\n", r->delay);
+        sleep_ms(r->delay);
 
         r->attempts++;
     }
 
-    return ret;
+    if (ret != 0) {
+        printf("Operation failed after %llu attempts.\n", r->attempts);
+    }
+
+    return 0;
 }
 
 void

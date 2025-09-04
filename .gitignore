@@ -3,9 +3,9 @@
 *.dynlib
 
 .vscode/*
-
+*.dSYM/
 bin/*
-example
 tests/tests
+example
 libretry.dylib
 libretry.so
